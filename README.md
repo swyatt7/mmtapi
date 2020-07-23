@@ -15,10 +15,11 @@ Here we describe the process to POST, GET, UPDATE, and DELETE a MMT Target. The 
 ```python
 import mmtapi
 
-t = mmtapi.Target(token=API_TOKEN)
+target = mmtapi.Target(token=API_TOKEN, ...)
 #once a request is made
 
-t.**action() #post, delete, update... etc
+target.**action() #post, delete, update... etc
+
 #the request response can be viewed by
 t.api.request
 
@@ -34,13 +35,14 @@ t.api.request
 Firstly, create the target with the appropriate target metadata along with the API token. RA and DEC can be both in decimal format or can be hh:mm:ss.s format. 
 
 Secondly, set the exposure parameters:
-..* `observationtype` can be `imaging` or `spectrum`
-..* `priority` 
-..* `filter` is required if observationtype is imaging
-..* `exposuretime`
-..* `numberexposures`
-..* `visits`
-..* `targetofopportunity`
+
+* `observationtype` can be `imaging` or `spectrum`
+* `priority` 
+* `filter` is required if observationtype is imaging
+* `exposuretime`
+* `numberexposures`
+* `visits`
+* `targetofopportunity`
 
 The exposure parameters will be validated upon initialization.
 Once that has been set, you can build the post json parameters that will be passed into the MMT post request.
