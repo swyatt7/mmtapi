@@ -102,6 +102,20 @@ payload = {
 target.update(payload)
 ```
 
+Valid MMT Target `KEY_WORD`'s:
+
+```python
+[
+  'id', 'ra', 'objectid', 'observationtype', 'moon', 'seeing', 'photometric', 'priority', 'dec', 'ra_decimal', 
+  'dec_decimal', 'pm_ra', 'pm_dec', 'magnitude', 'exposuretime', 'numberexposures', 'visits', 
+  'onevisitpernight', 'filter', 'grism', 'grating', 'centralwavelength', 'readtab', 'gain', 'dithersize', 
+  'epoch', 'submitted', 'modified', 'notes', 'pa', 'maskid', 'slitwidth', 'slitwidthproperty', 'iscomplete',
+  'disabled', 'notify', 'locked', 'findingchartfilename', 'instrumentid', 'targetofopportunity', 'reduced',
+  'exposuretimeremaining', 'totallength', 'totallengthformatted', 'exposuretimeremainingformatted', 
+  'exposuretimecompleted', 'percentcompleted', 'offsetstars', 'details', 'mask'
+]
+```
+
 ### Deleting a Target
 
 Once a target is created or retireved with the API GET method, it can be deleted from the Observatory scheduler.
