@@ -13,7 +13,7 @@ pip3 install mmtapi
 Here we describe the process to POST, GET, UPDATE, and DELETE a MMT Target. The `Target` class also contains an `api` class that calls each of the API methods. This class contains the request information for each request method so that it can debugged in the command line. 
 
 ```python
-import mmtapi
+import mmtapi.mmtapi as mmtapi
 
 target = mmtapi.Target(token=API_TOKEN, ...)
 #once a request is made
@@ -49,7 +49,7 @@ Once that has been set, you can build the post json parameters that will be pass
 Then it can be successfully posted. The MMT returns the succesfully posted `targetid`
 
 ```python
-import mmtapi
+import mmtapi.mmtapi as mmtapi
 
 target = mmtapi.Target(token=API_TOKEN,
                        objectid=TARGET_NAME,
@@ -75,7 +75,7 @@ print(target.api.request.text) #contains the targetid
 To get Target Information the only parameters to be passed into the Target class initation are the `token` and `targetid`. This will populate the Target with all of the MMT Target's keywords. If the request is successful, print out all of the target information with the `.dump()` method.
 
 ```python
-import mmtapi
+import mmtapi.mmtapi as mmtapi
 
 target=mmtapi.Target(token=API_TOKEN,
                      targetid=TARGET_ID)
