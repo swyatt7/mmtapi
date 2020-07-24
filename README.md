@@ -2,10 +2,10 @@
 
 This repository is designed to facilitate submitting a rapid Target of Opprotunity (ToO) observation to the [MMT](https://www.mmto.org/) with the goal to enable same-night spectroscopy of interesting transients. Here we will provide examples to install and upload targets.
 
-## Install (NOT YET IMPLEMENTED IN PYPI)
+## Install
 To get the repository (in a bash/unix terminal)
 ```bash
-pip install mmtapi
+pip3 install mmtapi
 ```
 
 ## Using the API Wrapper
