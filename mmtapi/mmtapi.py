@@ -1,6 +1,6 @@
 import os, json, requests
 
- 
+
 def isInt(i):
     try:
         ret = int(i)
@@ -28,7 +28,7 @@ class api():
             self.token = os.getenv('MMT_API_TOKEN')
         else:
             self.token = token
-        
+
         self.request = None
 
 
@@ -40,7 +40,6 @@ class api():
     def post(self, d_json):
         self.build_url()
         self.request = requests.post(self.url, json=d_json)
-        
 
 
     def get(self, d_json):
@@ -65,7 +64,6 @@ class api():
     def post_finder(self, data, files):
         self.build_url()
         self.request = requests.post(self.url+'/'+str(data['target_id']), data=data, files=files)
-        
 
 
 class Target():
@@ -82,6 +80,7 @@ class Target():
         ##### temporary #####
         self.catalogid = 486
         self.programid = 977
+        self.valid = False
         ##### eeeeeeeee #####
 
         assert token is not None, 'Token cannot be None'
@@ -94,7 +93,7 @@ class Target():
 
         else:
 
-            assert ra is not None or dec is None, 'Fields \'ra\' and \'dec\' are required'
+            assert ra is not None or dec is not None, 'Fields \'ra\' and \'dec\' are required'
             assert objectid is not None, 'Field \'objectid\' is required'
             assert magnitude is not None, 'Field \'magnitude\' is required'
 
@@ -116,7 +115,7 @@ class Target():
                      targetofopportunity=None):
 
         assert observationtype in ['imaging', 'spectrum'], 'Field \' observationtype\' must be either \'imaging\' or \'spectrum\''
-        assert isInt(visits) and visits > 0, 'Field \'visits\' must be integer and greater than zero' 
+        assert isInt(visits) and visits > 0, 'Field \'visits\' must be integer and greater than zero'
         assert isFloat(exposuretime), 'Field \'exposuretime\' must be a valid decimal'
         assert isInt(numberexposures) and numberexposures > 0, 'Field \'numberexposures\' must be integer and greater than zero'
 
@@ -204,7 +203,7 @@ class Target():
             }
 
             files = {
-                'finding_chart_file': open(finder_path, 'rb')    
+                'finding_chart_file': open(finder_path, 'rb')
             }
 
             self.api.post_finder(data, files)
@@ -220,7 +219,7 @@ class Target():
         self.api.get(d_json=data)
         request = self.api.request
         r = json.loads(request.text)
-        if request.status_code == 200: 
+        if request.status_code == 200:
             self.valid = True
             self.id = r['id'] if 'id' in r.keys() else None
             self.ra = r['ra'] if 'ra' in r.keys() else None
