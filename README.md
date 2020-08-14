@@ -21,7 +21,7 @@ target = mmtapi.Target(token=API_TOKEN, ...)
 target.**action() #post, delete, update... etc
 
 #the request response can be viewed by
-t.api.request
+target.api.request
 
 #which contains all of the expected request response information:
 #   t.api.request.content
