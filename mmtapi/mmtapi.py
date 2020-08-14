@@ -115,11 +115,11 @@ class Target():
                         centralwavelength = selfdict['centralwavelength']
                         if isFloat(centralwavelength):
                             cw = float(centralwavelength)
-                            if grating in ['270', 270] and not (cw > 5501 and cw < 7838):
+                            if grating in ['270', 270] and not (cw >= 5501 and cw <= 7838):
                                 errors.append('For \'grating\' = 270: valid centralwavelength ['+str(centralwavelength)+'] must be between 5501-7838 Angstroms')
-                            if grating in ['600', 600] and not (cw > 5146 and cw < 8783):
+                            if grating in ['600', 600] and not (cw >= 5146 and cw <= 8783):
                                 errors.append('For \'grating\' = 600: valid centralwavelength ['+str(centralwavelength)+'] must be between 5501-7838 Angstroms')
-                            if grating in ['1000', 1000] and not ((cw > 4108 and cw < 4683) or (cw > 5181 and cw < 7273) or (cw > 7363 and cw < 7967) or (cw > 8153 and cw < 8772) or (cw > 8897 and cw < 9279)):
+                            if grating in ['1000', 1000] and not ((cw >= 4108 and cw <= 4683) or (cw >= 5181 and cw <= 7273) or (cw >= 7363 and cw <= 7967) or (cw >= 8153 and cw <= 8772) or (cw >= 8897 and cw <= 9279)):
                                 errors.append('For \'grating\' = 1000: valid centralwavelength must be between 4108-4683, 5181-7273, 7363-7967, 8153-8772 or 8897-9279')
                         else:
                             errors.append('Field \'centralwavelength\' must be float')
@@ -173,13 +173,7 @@ class Target():
         else:
             errors.append('Field \'observationtype\' is required. Valid values are \'longslit\', \'imaging\', and \'mask\'')
         
-        if 'epoch' in selfkeys:
-            epoch = selfdict['epoch']
-            r = re.compile('.{4}\.')
-            if not r.match(str(epoch)):
-                errors.append('Invalid format for field \'epoch\'. Must be format dddd.d')
-            #validate format dddd.d
-        else:
+        if 'epoch' not in selfkeys:
             warnings.append('Field \'epoch\' default set to 2000.0')
             self.__dict__.update({'epoch':2000.0})
 
@@ -188,7 +182,7 @@ class Target():
             if not isInt(exposuretime):
                 errors.append('Field \'exposuretime\' valid format is integer (seconds)')
             elif not int(exposuretime) > 0:
-                errors.append('Field \'expososuretime\' must be greater than zero you dingus')
+                errors.append('Field \'exposuretime\' must be greater than zero you dingus')
         else:
             errors.append('Field \'exposuretime\' is required. Valid format is integer (seconds)')
 
@@ -326,8 +320,12 @@ class Target():
 
 
     def update(self, **kwargs):
+
+        self.__dict__.update((key, value) for key, value in kwargs.items() if key in MMT_JSON_KEYS)
+        self.validate()
+
         if self.valid:
-            kwargs['targetid'] = self.__dict__['targetid']
+            kwargs['targetid'] = self.__dict__['id']
             kwargs['catalogid'] = self.__dict__['catalogid']
             kwargs['token'] = self.api.token
 
@@ -396,7 +394,7 @@ class Target():
                 'token':self.api.token,
                 'catalog_id':str(self.__dict__['catalogid']),
                 'program_id':str(self.__dict__['programid']),
-                'target_id':str(self.__dict__['targetid']),
+                'target_id':str(self.__dict__['id']),
             }
 
             files = {
