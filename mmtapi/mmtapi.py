@@ -328,7 +328,7 @@ class Target():
         #Settings for limiting to only Binospec
         self.__dict__.update({'dithersize':None, 'gain':None, 'grism':None, 'moon':None, 'readtab':None})
 
-        validate instrument on the telescope
+        #Validate instrument on the telescope
         current_instruments = self.api.get_instruments()
         if not any(int(ci['instrumentid']) == 16 for ci in current_instruments):
             errors.append('Binospec is currently not on the MMT!\n \
