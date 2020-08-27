@@ -1,6 +1,6 @@
 # MMT API
 
-This repository is designed to facilitate submitting a rapid Target of Opprotunity (ToO) observation to the [MMT](https://www.mmto.org/) with the goal to enable same-night spectroscopy of interesting transients. Here we will provide examples to install and upload targets.
+This repository is designed to facilitate submitting a rapid Target of Opprotunity (ToO) observation to Binospec at the [MMT](https://www.mmto.org/) with the goal to enable same-night spectroscopy of interesting transients. Here we will provide examples to install and upload targets.
 
 ## Install
 To get the repository (in a bash/unix terminal)
@@ -172,3 +172,33 @@ Once a target is created or retireved with the API GET method, it can be deleted
 ```python
 target.delete()
 ```
+
+## Other API Endpoints
+
+### MMT Instrument
+
+Here we describe the API endpoint to get the current instruments in the most recent published schedule. When instantiating a Target through this API it will validate whether or not the Binospec instrument is on the telescope. It can also be used to see what instruments are currently on, or when an instrument will be on the telescope.
+
+This function takes can take in two parameters:
+* `date` 
+* `instrumentid`
+
+if you don't pass any params into the function it will just find the current instruments on the telescope using `datetime.datetime.now()`
+
+```python
+from datetime import datetime, timedelta
+api = mmtapi.api()
+current_instruments = api.get_instruments()
+
+#you can look into the future to see what instruments will be available:
+future_instruments = api.get_instruments(date=datetime.datetime.now()+timedelta(months=1))
+
+#you can look through the entire published schedule to see when a certain instrument will be on the telescope (Binospec = 16)
+my_instrument = api.get_instruments(instrumentid=16)
+```
+
+This function returns a list of dictionary elements with the values for: 
+* `instrumentid` - ID for the instrument
+* `name` -  the name of the queue run
+* `start` - start date
+* `end` - end date
