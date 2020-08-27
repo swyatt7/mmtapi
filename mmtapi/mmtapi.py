@@ -1,5 +1,6 @@
 import os, json, requests, re
 from . import MMT_JSON_KEYS, MMT_CATALOG_ID, MMT_PROGRAM_ID, MMT_REQUIRED_KEYS, isInt, isFloat
+from datetime import datetime
 
 class api():
 
@@ -35,9 +36,8 @@ class api():
 
     def put(self, d_json):
         self.build_url()
-        r = requests.put(self.url+'/'+str(d_json['targetid']), json=d_json)
-        self.request = r
-        return r
+        self.request = requests.put(self.url+'/'+str(d_json['targetid']), json=d_json)
+        return self.request
 
 
     def delete(self, d_json):
@@ -49,6 +49,35 @@ class api():
         self.build_url()
         self.request = requests.post(self.url+'/'+str(data['target_id']), data=data, files=files)
 
+
+    def get_instruments(self, date=None, instrumentid=None):
+
+        if date is None and instrumentid is None:
+            date = datetime.now()
+
+        self.url = 'https://scheduler.mmto.arizona.edu/APIv2/trimester//schedule/all'
+        self.request = requests.get(self.url)
+
+        schedule = json.loads(self.request.text)
+        published_queues = schedule['published']['queues']
+        ret = []
+
+        for pq in published_queues:
+            start = datetime.strptime(pq['queueruns'][0]['startdate'], '%Y-%m-%d %H:%M:%S-%f')
+            end = datetime.strptime(pq['queueruns'][0]['enddate'], '%Y-%m-%d %H:%M:%S-%f')
+            instid = pq['instrumentid']
+            queuename = pq['name']
+            for qr in pq['queueruns']:
+                start = datetime.strptime(qr['startdate'], '%Y-%m-%d %H:%M:%S-%f')
+                end = datetime.strptime(qr['enddate'], '%Y-%m-%d %H:%M:%S-%f')
+                if instrumentid is None and (date > start and date < end):
+                    ret.append({'instrumentid':instid, 'name':queuename, 'start': start, 'end': end})
+                if date is None and (instrumentid == int(instid)):
+                    ret.append({'instrumentid':instid, 'name':queuename, 'start': start, 'end': end})
+                
+
+        ret = sorted(ret, key=lambda i: i['start'])
+        return ret
 
 class Target():
     def __init__(self, token=None, verbose=True, payload={}):
@@ -298,6 +327,12 @@ class Target():
 
         #Settings for limiting to only Binospec
         self.__dict__.update({'dithersize':None, 'gain':None, 'grism':None, 'moon':None, 'readtab':None})
+
+        validate instrument on the telescope
+        current_instruments = self.api.get_instruments()
+        if not any(int(ci['instrumentid']) == 16 for ci in current_instruments):
+            errors.append('Binospec is currently not on the MMT!\n \
+                Envoke target.api.get_instruments(instrumentid=16) to see when the next start date is for Binospec')
 
         #Print out Errors and Warnings
         self.valid = (len(errors) == 0)
