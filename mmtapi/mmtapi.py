@@ -17,36 +17,36 @@ class api():
         self.request = None
 
 
-    def build_url(self):
+    def __build_url(self):
         assert self.target is not None, 'Target cannot be None'
         self.url = '{}/{}'.format(self.base, self.target)
 
 
-    def post(self, d_json):
-        self.build_url()
+    def _post(self, d_json):
+        self.__build_url()
         self.request = requests.post(self.url, json=d_json)
 
 
-    def get(self, d_json):
-        self.build_url()
+    def _get(self, d_json):
+        self.__build_url()
         r = requests.get(self.url+'/'+str(d_json['targetid']))
         self.request = r
         return r
 
 
-    def put(self, d_json):
-        self.build_url()
+    def _put(self, d_json):
+        self.__build_url()
         self.request = requests.put(self.url+'/'+str(d_json['targetid']), json=d_json)
         return self.request
 
 
-    def delete(self, d_json):
-        self.build_url()
+    def _delete(self, d_json):
+        self.__build_url()
         self.request = requests.delete(self.url+'/'+str(d_json['targetid']))
 
 
-    def post_finder(self, data, files):
-        self.build_url()
+    def _post_finder(self, data, files):
+        self.__build_url()
         self.request = requests.post(self.url+'/'+str(data['target_id']), data=data, files=files)
 
 
@@ -75,11 +75,10 @@ class api():
                 if date is None and (instrumentid == int(instid)):
                     ret.append({'instrumentid':instid, 'name':queuename, 'start': start, 'end': end})
                 
-
         ret = sorted(ret, key=lambda i: i['start'])
         return ret
 
-class Target():
+class Target(api):
     def __init__(self, token=None, verbose=True, payload={}):
         
         self.verbose = verbose
@@ -90,7 +89,8 @@ class Target():
         ##### eeeeeeeee #####
 
         assert token is not None, 'Token cannot be None'
-        self.api = api('catalogTarget', token)
+        super().__init__('catalogTarget', token)
+        #self.api = api('catalogTarget', token)
 
         allowed_keys = list(MMT_JSON_KEYS)
         self.__dict__.update((str(key).lower(), value) for key, value in payload.items() if str(key).lower() in allowed_keys)
@@ -329,9 +329,18 @@ class Target():
         self.__dict__.update({'dithersize':None, 'gain':None, 'grism':None, 'moon':None, 'readtab':None})
 
         #Validate instrument on the telescope
-        current_instruments = self.api.get_instruments()
-        if not any(int(ci['instrumentid']) == 16 for ci in current_instruments):
-            errors.append('Binospec is currently not on the MMT!\n \
+        current_instruments = self.get_instruments()
+        if any(int(ci['instrumentid']) == 16 for ci in current_instruments):
+            if 'targetofopportunity' not in selfkeys:
+                self.__dict__.update({'targetofopportunity':1})
+            if 'priority' not in selfkeys:
+                self.__dict__.update({'priority':1})
+        else:
+            self.__dict__.update({'targetofopportunity':0})
+            self.__dict__.update({'priority':3})
+            warnings.append('Binospec is currently not on the MMT!\n \
+                Setting Field: \'targetofopportunity\' to 0\n \
+                Setting Field \'priority\' to 3\n \
                 Envoke target.api.get_instruments(instrumentid=16) to see when the next start date is for Binospec')
 
         #Print out Errors and Warnings
@@ -362,10 +371,10 @@ class Target():
         if self.valid:
             kwargs['targetid'] = self.__dict__['id']
             kwargs['catalogid'] = self.__dict__['catalogid']
-            kwargs['token'] = self.api.token
+            kwargs['token'] = self.token
 
-            self.api.put(kwargs)
-            r = self.api.request
+            self._put(kwargs)
+            r = self.request
             print(json.loads(r.text), r.status_code)
 
             if r.status_code == 200:
@@ -378,12 +387,12 @@ class Target():
 
     def delete(self):
         data = {
-            'token':self.api.token,
+            'token':self.token,
             'catalogid':self.__dict__['catalogid'],
-            'targetid':self.__dict__['targetid']
+            'targetid':self.__dict__['id']
         }
-        self.api.delete(d_json=data)
-        r = self.api.request
+        self._delete(d_json=data)
+        r = self.request
         if r.status_code == 200:
             print("Succesfully Deleted")
         else:
@@ -396,8 +405,8 @@ class Target():
         if self.valid:
             payload = dict((key, value) for key, value in self.__dict__.items() if key in MMT_JSON_KEYS)
             payload['catalogid'] = self.catalogid
-            self.api.post(payload)
-            r = self.api.request
+            self._post(payload)
+            r = self.request
             if self.verbose:
                 print(json.loads(r.text), r.status_code)
             if r.status_code == 200:
@@ -409,12 +418,12 @@ class Target():
 
     def get(self):
         data = {
-            'token':self.api.token,
+            'token':self.token,
             'catalogid':self.__dict__['catalogid'],
             'targetid':self.__dict__['targetid']
         }
-        self.api.get(d_json=data)
-        request = self.api.request
+        self._get(d_json=data)
+        request = self.request
         r = json.loads(request.text)
         if request.status_code == 200:
             self.__dict__.update((key, value) for key, value in r.items())
@@ -426,7 +435,7 @@ class Target():
         if self.valid:
             data = {
                 'type':'finding_chart',
-                'token':self.api.token,
+                'token':self.token,
                 'catalog_id':str(self.__dict__['catalogid']),
                 'program_id':str(self.__dict__['programid']),
                 'target_id':str(self.__dict__['id']),
@@ -436,8 +445,8 @@ class Target():
                 'finding_chart_file': open(finder_path, 'rb')
             }
 
-            self.api.post_finder(data, files)
-            r = self.api.request
+            self._post_finder(data, files)
+            r = self.request
             if r.status_code == 200:
                 self.__dict__.update((key, value) for key, value in json.loads(r.text).items())
             else:
