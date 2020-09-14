@@ -1,5 +1,3 @@
-MMT_CATALOG_ID = 486
-MMT_PROGRAM_ID = 977
 MMT_JSON_KEYS = ("id", "ra", "objectid", "observationtype", "moon", "seeing", "photometric", "priority", "dec",
                  "ra_decimal", "dec_decimal", "pm_ra", "pm_dec", "magnitude", "exposuretime", "numberexposures",
                  "visits", "onevisitpernight", "filter", "grism", "grating", "centralwavelength", "readtab",
@@ -25,6 +23,6 @@ def isFloat(i):
         return True
     except:
         return False
-        
+
 
 from . import mmtapi

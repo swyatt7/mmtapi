@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="mmtapi", # Replace with your own username
-    version="0.0.05",
+    version="0.5.1",
     author="Samuel Wyatt",
     author_email="swyatt@email.arizona.edu",
     description="An API wrapper for uploading Targets to the MMT observation queue",

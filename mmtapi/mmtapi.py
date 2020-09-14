@@ -1,5 +1,5 @@
 import os, json, requests, re
-from . import MMT_JSON_KEYS, MMT_CATALOG_ID, MMT_PROGRAM_ID, MMT_REQUIRED_KEYS, isInt, isFloat
+from . import MMT_JSON_KEYS, MMT_REQUIRED_KEYS, isInt, isFloat
 from datetime import datetime
 
 class api():
@@ -74,27 +74,22 @@ class api():
                     ret.append({'instrumentid':instid, 'name':queuename, 'start': start, 'end': end})
                 if date is None and (instrumentid == int(instid)):
                     ret.append({'instrumentid':instid, 'name':queuename, 'start': start, 'end': end})
-                
+
         ret = sorted(ret, key=lambda i: i['start'])
         return ret
 
 class Target(api):
     def __init__(self, token=None, verbose=True, payload={}):
-        
+
         self.verbose = verbose
-        ##### temporary #####
-        self.catalogid = MMT_CATALOG_ID
-        self.programid = MMT_PROGRAM_ID
         self.valid = False
-        ##### eeeeeeeee #####
 
         assert token is not None, 'Token cannot be None'
         super().__init__('catalogTarget', token)
-        #self.api = api('catalogTarget', token)
 
         allowed_keys = list(MMT_JSON_KEYS)
         self.__dict__.update((str(key).lower(), value) for key, value in payload.items() if str(key).lower() in allowed_keys)
-        
+
         if 'targetid' in payload.keys():
             self.targetid = payload['targetid']
             self.get()
@@ -198,10 +193,10 @@ class Target(api):
                 onevisitpernight = selfdict['onevisitpernight']
                 if onevisitpernight not in [0, 1]:
                     errors.append('Field \'onevisitpernight\' must be either 0 or 1')
-                
+
         else:
             errors.append('Field \'observationtype\' is required. Valid values are \'longslit\', \'imaging\', and \'mask\'')
-        
+
         if 'epoch' not in selfkeys:
             warnings.append('Field \'epoch\' default set to 2000.0')
             self.__dict__.update({'epoch':2000.0})
@@ -222,7 +217,7 @@ class Target(api):
         else:
             warnings.append('Only supported instrument right now is Binospec: setting instrumentid to 16')
             self.__dict__.update({'instrumentid':'16'})
-        
+
         if 'magnitude' in selfkeys:
             magnitude = selfdict['magnitude']
             if not isFloat(magnitude):
@@ -243,7 +238,7 @@ class Target(api):
                 ----Longslit1_25: 131 \n \
                 ----Longslit1_5: 114 \n \
                 ----Longslit5: 112')
-            
+
         if 'numberexposures' in selfkeys:
             numberexposures = selfdict['numberexposures']
             if not isInt(numberexposures):
@@ -251,7 +246,7 @@ class Target(api):
         else:
             warnings.append('Field \'numberexposures\' is required. Setting value to 1')
             self.__dict__.update({'numberexposures':1})
-        
+
         if 'objectid' in selfkeys:
             objectid = selfdict['objectid']
             if len(objectid) < 2 or len(objectid) > 50:
@@ -301,7 +296,7 @@ class Target(api):
             visits = selfdict['visits']
             if not isInt(visits):
                 errors.append('Field \'visits\' must be an integer')
-        else: 
+        else:
             warnings.append('Field \'visits\' is set to 1')
             self.__dict__.update({'visits':1})
 
@@ -329,19 +324,19 @@ class Target(api):
         self.__dict__.update({'dithersize':None, 'gain':None, 'grism':None, 'moon':None, 'readtab':None})
 
         #Validate instrument on the telescope
-        current_instruments = self.get_instruments()
-        if any(int(ci['instrumentid']) == 16 for ci in current_instruments):
-            if 'targetofopportunity' not in selfkeys:
-                self.__dict__.update({'targetofopportunity':1})
-            if 'priority' not in selfkeys:
-                self.__dict__.update({'priority':1})
-        else:
-            self.__dict__.update({'targetofopportunity':0})
-            self.__dict__.update({'priority':3})
-            warnings.append('Binospec is currently not on the MMT!\n \
-                Setting Field: \'targetofopportunity\' to 0\n \
-                Setting Field \'priority\' to 3\n \
-                Envoke target.api.get_instruments(instrumentid=16) to see when the next start date is for Binospec')
+        #current_instruments = self.get_instruments()
+        #if any(int(ci['instrumentid']) == 16 for ci in current_instruments):
+        #    if 'targetofopportunity' not in selfkeys:
+        #        self.__dict__.update({'targetofopportunity':1})
+        #    if 'priority' not in selfkeys:
+        #        self.__dict__.update({'priority':1})
+        #else:
+        #    self.__dict__.update({'targetofopportunity':0})
+        #    self.__dict__.update({'priority':3})
+        #    warnings.append('Binospec is currently not on the MMT!\n \
+        #        Setting Field: \'targetofopportunity\' to 0\n \
+        #        Setting Field \'priority\' to 3\n \
+        #        Envoke target.api.get_instruments(instrumentid=16) to see when the next start date is for Binospec')
 
         #Print out Errors and Warnings
         self.valid = (len(errors) == 0)
@@ -370,7 +365,6 @@ class Target(api):
 
         if self.valid:
             kwargs['targetid'] = self.__dict__['id']
-            kwargs['catalogid'] = self.__dict__['catalogid']
             kwargs['token'] = self.token
 
             self._put(kwargs)
@@ -380,7 +374,7 @@ class Target(api):
             if r.status_code == 200:
                 self.__dict__.update((key, value) for key, value in json.loads(r.text).items())
             else:
-                print('Something went wrong with the request. Envoke target.api.request to see request information')
+                print('Something went wrong with the request. Envoke target.request to see request information')
         else:
             print('Invalid Target. Envoke target.validate() to see errors')
 
@@ -388,7 +382,6 @@ class Target(api):
     def delete(self):
         data = {
             'token':self.token,
-            'catalogid':self.__dict__['catalogid'],
             'targetid':self.__dict__['id']
         }
         self._delete(d_json=data)
@@ -396,15 +389,15 @@ class Target(api):
         if r.status_code == 200:
             print("Succesfully Deleted")
         else:
-            print('Something went wrong with the request. Envoke target.api.request to see request information')
-        if self.verbose:   
+            print('Something went wrong with the request. Envoke target.request to see request information')
+        if self.verbose:
             print(json.loads(r.text), r.status_code)
 
 
     def post(self):
         if self.valid:
             payload = dict((key, value) for key, value in self.__dict__.items() if key in MMT_JSON_KEYS)
-            payload['catalogid'] = self.catalogid
+            payload['token'] = self.token
             self._post(payload)
             r = self.request
             if self.verbose:
@@ -412,14 +405,13 @@ class Target(api):
             if r.status_code == 200:
                     self.__dict__.update((key, value) for key, value in json.loads(r.text).items())
             else:
-                print('Something went wrong with the request. Envoke target.api.request to see request information')
+                print('Something went wrong with the request. Envoke target.request to see request information')
         else:
             print('Invalid Target parameters. Envoke target.validate() to see errors')
 
     def get(self):
         data = {
             'token':self.token,
-            'catalogid':self.__dict__['catalogid'],
             'targetid':self.__dict__['targetid']
         }
         self._get(d_json=data)
@@ -428,16 +420,14 @@ class Target(api):
         if request.status_code == 200:
             self.__dict__.update((key, value) for key, value in r.items())
         else:
-            print('Something went wrong with the request. Envoke target.api.request to see request information')
-            
+            print('Something went wrong with the request. Envoke target.request to see request information')
+
 
     def upload_finder(self, finder_path):
         if self.valid:
             data = {
                 'type':'finding_chart',
                 'token':self.token,
-                'catalog_id':str(self.__dict__['catalogid']),
-                'program_id':str(self.__dict__['programid']),
                 'target_id':str(self.__dict__['id']),
             }
 
@@ -450,6 +440,6 @@ class Target(api):
             if r.status_code == 200:
                 self.__dict__.update((key, value) for key, value in json.loads(r.text).items())
             else:
-                print('Something went wrong with the request. Envoke target.api.request to see request information')
+                print('Something went wrong with the request. Envoke target.request to see request information')
             if self.verbose:
                 print(json.loads(r.text), r.status_code)
