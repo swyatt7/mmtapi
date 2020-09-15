@@ -15,18 +15,18 @@ Here we describe the process to POST, GET, UPDATE, and DELETE a MMT Target. The 
 ```python
 import mmtapi.mmtapi as mmtapi
 
-Target = mmtapi.Target(token=API_TOKEN, ...)
+target = mmtapi.Target(token=API_TOKEN, ...)
 #once a request is made
 
-Target.**action() #post, delete, update... etc
+target.**action() #post, delete, update... etc
 
 #the request response can be viewed by
-Target.api.request
+target.request
 
 #which contains all of the expected request response information:
-#   Target.api.request.content
-#   Target.api.request.text
-#   Target.api.request.status_code
+#   target.request.content
+#   target.request.text
+#   target.request.status_code
 #   etc
 ```
 
