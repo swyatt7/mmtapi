@@ -1,0 +1,34 @@
+# +
+
+# Compiled
+
+# -
+
+*.pyc
+
+__pycache__
+
+.pytest_cache
+
+build
+
+dist
+
+mmtapi.egg-info
+
+
+# +
+
+# Packages
+
+# -
+
+*.csv
+
+*.gz
+
+*.tar
+
+*.tgz
+
+*.zip
