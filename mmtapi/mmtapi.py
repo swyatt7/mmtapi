@@ -1,4 +1,5 @@
 import os, json, requests, re
+from pathlib import Path
 from . import MMT_JSON_KEYS, MMT_REQUIRED_KEYS, isInt, isFloat
 from datetime import datetime
 
@@ -17,70 +18,49 @@ class api():
         self.request = None
 
 
-    def __build_url(self):
+    def __build_url(self, params={}):
         assert self.target is not None, 'Target cannot be None'
         self.url = '{}/{}'.format(self.base, self.target)
+        for p in params:
+            if p in ['targetid', 'datafileid']:
+                self.url = '{}/{}'.format(self.url, params[p])
+            else:
+                self.url = '{}/{}/{}'.format(self.url, p, params[p])
 
 
-    def _post(self, d_json):
-        self.__build_url()
-        self.request = requests.post(self.url, json=d_json)
-
-
-    def _get(self, d_json):
-        self.__build_url()
-        r = requests.get(self.url+'/'+str(d_json['targetid']))
-        self.request = r
-        return r
-
-
-    def _put(self, d_json):
-        self.__build_url()
-        self.request = requests.put(self.url+'/'+str(d_json['targetid']), json=d_json)
+    def _post(self, r_json):
+        self.__build_url(r_json['urlparams'])
+        data = r_json['data'] if 'data' in r_json.keys() else None
+        files = r_json['files'] if 'files' in r_json.keys() else None
+        d_json = r_json['d_json'] if 'd_json' in r_json.keys() else None
+        self.request = requests.post(self.url, json=d_json, data=data, files=files)
         return self.request
 
 
-    def _delete(self, d_json):
-        self.__build_url()
-        self.request = requests.delete(self.url+'/'+str(d_json['targetid']))
+    def _get(self, r_json):
+        self.__build_url(r_json['urlparams'])
+        d_json = r_json['d_json'] if 'd_json' in r_json.keys() else None
+        self.request = requests.get(self.url, json=d_json)
+        return self.request
 
 
-    def _post_finder(self, data, files):
-        self.__build_url()
-        self.request = requests.post(self.url+'/'+str(data['target_id']), data=data, files=files)
+    def _put(self, r_json):
+        self.__build_url(r_json['urlparams'])
+        d_json = r_json['d_json'] 
+        self.request = requests.put(self.url, json=d_json)
+        return self.request
 
 
-    def get_instruments(self, date=None, instrumentid=None):
+    def _delete(self, r_json):
+        self.__build_url(r_json['urlparams'])
+        d_json = r_json['d_json']
+        self.request = requests.delete(self.url, json=d_json)
+        return self.request
 
-        if date is None and instrumentid is None:
-            date = datetime.now()
-
-        self.url = 'https://scheduler.mmto.arizona.edu/APIv2/trimester//schedule/all'
-        self.request = requests.get(self.url)
-
-        schedule = json.loads(self.request.text)
-        published_queues = schedule['published']['queues']
-        ret = []
-
-        for pq in published_queues:
-            start = datetime.strptime(pq['queueruns'][0]['startdate'], '%Y-%m-%d %H:%M:%S-%f')
-            end = datetime.strptime(pq['queueruns'][0]['enddate'], '%Y-%m-%d %H:%M:%S-%f')
-            instid = pq['instrumentid']
-            queuename = pq['name']
-            for qr in pq['queueruns']:
-                start = datetime.strptime(qr['startdate'], '%Y-%m-%d %H:%M:%S-%f')
-                end = datetime.strptime(qr['enddate'], '%Y-%m-%d %H:%M:%S-%f')
-                if instrumentid is None and (date > start and date < end):
-                    ret.append({'instrumentid':instid, 'name':queuename, 'start': start, 'end': end})
-                if date is None and (instrumentid == int(instid)):
-                    ret.append({'instrumentid':instid, 'name':queuename, 'start': start, 'end': end})
-
-        ret = sorted(ret, key=lambda i: i['start'])
-        return ret
 
 class Target(api):
     def __init__(self, token=None, verbose=True, payload={}):
-
+        print('TESTS')
         self.verbose = verbose
         self.valid = False
 
@@ -92,9 +72,11 @@ class Target(api):
 
         if 'targetid' in payload.keys():
             self.targetid = payload['targetid']
+            self.id = payload['targetid']
             self.get()
 
         self.validate(verbose=self.verbose)
+
 
     def validate(self, verbose=True):
         selfkeys = self.__dict__.keys()
@@ -367,7 +349,14 @@ class Target(api):
             kwargs['targetid'] = self.__dict__['id']
             kwargs['token'] = self.token
 
-            self._put(kwargs)
+            data = {
+                'urlparams':{
+                    'targetid':self.__dict__['id']
+                },
+                'd_json':kwargs
+            }
+
+            self._put(r_json=data)
             r = self.request
             print(json.loads(r.text), r.status_code)
 
@@ -381,11 +370,14 @@ class Target(api):
 
     def delete(self):
         data = {
-            'token':self.token,
-            'targetid':self.__dict__['id']
+            'urlparams':{
+                'targetid':self.__dict__['id']
+            },
+            'd_json':{
+                'token':self.token
+            }
         }
-        self._delete(d_json=data)
-        r = self.request
+        r = self._delete(r_json=data)
         if r.status_code == 200:
             print("Succesfully Deleted")
         else:
@@ -398,8 +390,14 @@ class Target(api):
         if self.valid:
             payload = dict((key, value) for key, value in self.__dict__.items() if key in MMT_JSON_KEYS)
             payload['token'] = self.token
-            self._post(payload)
-            r = self.request
+            data = {
+                'urlparams':{},
+                'data':None,
+                'files':None,
+                'd_json':payload,
+            }
+            r = self._post(r_json=data)
+            
             if self.verbose:
                 print(json.loads(r.text), r.status_code)
             if r.status_code == 200:
@@ -409,13 +407,17 @@ class Target(api):
         else:
             print('Invalid Target parameters. Envoke target.validate() to see errors')
 
+
     def get(self):
         data = {
-            'token':self.token,
-            'targetid':self.__dict__['targetid']
+            'urlparams': {
+                'targetid':self.__dict__['targetid']
+            },
+            'd_json':{
+                'token':self.token
+            },
         }
-        self._get(d_json=data)
-        request = self.request
+        request = self._get(r_json=data)
         r = json.loads(request.text)
         if request.status_code == 200:
             self.__dict__.update((key, value) for key, value in r.items())
@@ -426,20 +428,167 @@ class Target(api):
     def upload_finder(self, finder_path):
         if self.valid:
             data = {
-                'type':'finding_chart',
-                'token':self.token,
-                'target_id':str(self.__dict__['id']),
+                'urlparams': {
+                    'targetid':self.__dict__['targetid']
+                },
+                'data':{
+                    'type':'finding_chart',
+                    'token':self.token,
+                    'target_id':str(self.__dict__['id']),
+                },
+                'files':{
+                    'finding_chart_file': open(finder_path, 'rb')
+                },
+                'd_json':None
             }
-
-            files = {
-                'finding_chart_file': open(finder_path, 'rb')
-            }
-
-            self._post_finder(data, files)
-            r = self.request
+            r = self._post(r_json=data)
             if r.status_code == 200:
                 self.__dict__.update((key, value) for key, value in json.loads(r.text).items())
             else:
                 print('Something went wrong with the request. Envoke target.request to see request information')
             if self.verbose:
                 print(json.loads(r.text), r.status_code)
+
+    
+    def download_exposures(self):
+        if self.valid and self.iscomplete == 1:
+            self.datalist = Datalist(token=self.token)
+            self.datalist.get(targetid=self.__dict__['id'])
+
+            parentdir = self.parentdir if 'parentdir' in self.__dict__.keys() else os.getcwd()
+            for d in self.datalist.data:
+                name = d['name']
+                datafiles = d['datafiles']
+                for df in datafiles:
+                    ftype = df['type']
+                    filepath = '{}/data/{}/{}'.format(parentdir, name, ftype)
+                    Path(filepath).mkdir(parents=True, exist_ok=True)
+                    datafileid = df['datafileid']
+                    filename = df['filename']
+                    download_file = '{}/{}'.format(filepath, filename)
+
+                    if not os.path.exists(download_file):
+                        if self.verbose:
+                            print('Downloading: {}'.format(download_file))
+                        im = Image(token=self.token)
+                        im.get(datafileid=datafileid, filepath=download_file)
+
+                    else:
+                        if self.verbose:
+                            print('File \'{}\' already exists'.format(download_file))
+
+
+class Instruments(api):
+    def __init__(self, token=None, verbose=True, payload={}):
+        self. verbose = verbose
+        super().__init__('trimester//schedule/all/', token)
+
+    def get_instruments(self, date=None, instrumentid=None):
+        if date is None and instrumentid is None:
+            date = datetime.now()
+
+        r_json = {
+            'urlparams':{},
+            'd_json':{
+                'token':self.token
+            }
+        }
+
+        self._get(r_json=r_json)
+
+        schedule = json.loads(self.request.text)
+        published_queues = schedule['published']['queues']
+        ret = []
+
+        for pq in published_queues:
+            start = datetime.strptime(pq['queueruns'][0]['startdate'], '%Y-%m-%d %H:%M:%S-%f')
+            end = datetime.strptime(pq['queueruns'][0]['enddate'], '%Y-%m-%d %H:%M:%S-%f')
+            instid = pq['instrumentid']
+            queuename = pq['name']
+            for qr in pq['queueruns']:
+                start = datetime.strptime(qr['startdate'], '%Y-%m-%d %H:%M:%S-%f')
+                end = datetime.strptime(qr['enddate'], '%Y-%m-%d %H:%M:%S-%f')
+                if instrumentid is None and (date > start and date < end):
+                    ret.append({'instrumentid':instid, 'name':queuename, 'start': start, 'end': end})
+                if date is None and (instrumentid == int(instid)):
+                    ret.append({'instrumentid':instid, 'name':queuename, 'start': start, 'end': end})
+
+        ret = sorted(ret, key=lambda i: i['start'])
+        if self.verbose:
+            for r in ret:
+                print(r)
+        return ret
+
+
+class Datalist(api):
+    def __init__(self, token=None, verbose=True, payload={}):
+        self.verbose = verbose
+        self.data = []
+        super().__init__('data/list/catalogtarget', token)
+
+
+    def get(self, targetid=None):
+        assert targetid is not None, 'targetid cannot be None'
+        r_json = {
+            'urlparams':{
+                'targetid':targetid,
+                'token':self.token,
+                'type':'raw'
+            }
+        }
+
+        self._get(r_json=r_json)
+        cwd = os.getcwd()
+
+        if self.request.status_code == 200:
+            content = json.loads(self.request.content)
+
+            for c in content:
+                file_info = []
+
+                name = c['name']
+                con_datafiles = c['datafiles']
+
+                for cd in con_datafiles:
+                    file_info.append({
+                        'datafileid':cd['id'],
+                        'filename':cd['filename'],
+                        'type':cd['type']
+                    })
+
+                self.data.append(
+                    {
+                        'name':name,
+                        'datafiles':file_info
+                    }
+                )
+
+        else:
+            print('Datalist request error')
+
+
+class Image(api):
+    def __init__(self, token=None, verbose=True, payload={}):
+        self. verbose = verbose
+        super().__init__('data/download/datafile', token)
+
+
+    def get(self, datafileid=None, filepath=os.getcwd()):
+
+        assert datafileid is not None, 'datafileid cannot be None'
+        r_json = {
+            'urlparams':{
+                'datafileid':datafileid,
+                'token':self.token
+            }
+        }
+
+        self._get(r_json=r_json)
+
+        if self.request.status_code == 200:
+            if self.verbose:
+                print('Writing file.')
+            open(filepath, 'wb').write(self.request.content)
+            self.request = None
+        else:
+            print('Image download request error')
