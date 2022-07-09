@@ -142,6 +142,12 @@ Once a target is either created, or retrieved with the API GET method, a finder 
 target.upload_finder(finder_path=PATH_TO_IMAGE)
 ```
 
+### Downloading a completed observation
+
+```python
+target.download_exposures()
+```
+
 ### Updating Target Information
 
 Once a target is created, or retrieved with the API GET method, its meta-data can be updated. All that is required is passing in the valid keyword arguments and their respective values. The updated information will be validated before being submitted to the API.
