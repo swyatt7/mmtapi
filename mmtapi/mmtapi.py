@@ -1,7 +1,15 @@
-import os, json, requests, re
+import os, json, requests, re, time
+#import pymongo
 from pathlib import Path
-from . import MMT_JSON_KEYS, MMT_REQUIRED_KEYS, isInt, isFloat
+from . import MMT_JSON_KEYS, LOCAL_TARGET_KEYS, isInt, isFloat
 from datetime import datetime
+
+#class mmt_database():
+#    def __init__(self, localport="27017", table='mmt_targets'):
+#        self.client = pymongo.MongoClient("mongodb://localhost:{}/".format(str(localport)))
+#        self.db = self.client['mmt_database']
+#        self.mmt_targets = self.db[table]
+
 
 class api():
 
@@ -46,7 +54,7 @@ class api():
 
     def _put(self, r_json):
         self.__build_url(r_json['urlparams'])
-        d_json = r_json['d_json'] 
+        d_json = r_json['d_json']
         self.request = requests.put(self.url, json=d_json)
         return self.request
 
@@ -60,9 +68,18 @@ class api():
 
 class Target(api):
     def __init__(self, token=None, verbose=True, payload={}):
-        print('TESTS')
         self.verbose = verbose
         self.valid = False
+        self.message = {
+            'Errors':[],
+            'Warnings':[]
+        }
+
+        self.local_information = {
+            'partial_download':False,
+            'downloaded':False,
+            'local_save':False
+        }
 
         assert token is not None, 'Token cannot be None'
         super().__init__('catalogTarget', token)
@@ -74,6 +91,7 @@ class Target(api):
             self.targetid = payload['targetid']
             self.id = payload['targetid']
             self.get()
+            #self.database_load()
 
         self.validate(verbose=self.verbose)
 
@@ -322,6 +340,11 @@ class Target(api):
 
         #Print out Errors and Warnings
         self.valid = (len(errors) == 0)
+        self.message = {
+            'Errors':errors,
+            'Warnings':warnings
+        }
+
         if self.verbose:
             if not self.valid:
                 print('INPUT TARGET ERRORS: ')
@@ -397,11 +420,12 @@ class Target(api):
                 'd_json':payload,
             }
             r = self._post(r_json=data)
-            
+
             if self.verbose:
                 print(json.loads(r.text), r.status_code)
             if r.status_code == 200:
                     self.__dict__.update((key, value) for key, value in json.loads(r.text).items())
+                    self.targetid = self.id
             else:
                 print('Something went wrong with the request. Envoke target.request to see request information')
         else:
@@ -449,33 +473,90 @@ class Target(api):
             if self.verbose:
                 print(json.loads(r.text), r.status_code)
 
-    
-    def download_exposures(self):
-        if self.valid and self.iscomplete == 1:
+
+    def download_exposures(self, force=False):
+        # also check the headers for the individual exposure times adding up to the total requested from api.get(targetid) method
+        # to decide if it is done
+        if (self.valid and self.iscomplete != 1) or force:
             self.datalist = Datalist(token=self.token)
             self.datalist.get(targetid=self.__dict__['id'])
 
             parentdir = self.parentdir if 'parentdir' in self.__dict__.keys() else os.getcwd()
-            for d in self.datalist.data:
-                name = d['name']
-                datafiles = d['datafiles']
-                for df in datafiles:
-                    ftype = df['type']
-                    filepath = '{}/data/{}/{}'.format(parentdir, name, ftype)
-                    Path(filepath).mkdir(parents=True, exist_ok=True)
-                    datafileid = df['datafileid']
-                    filename = df['filename']
-                    download_file = '{}/{}'.format(filepath, filename)
+            print('Length of datalist {}'.format(len(self.datalist.data)))
+            if len(self.datalist.data):
+                for d in self.datalist.data:
+                    name = d['name']
+                    datafiles = d['datafiles']
+                    for df in datafiles:
+                        ftype = df['type']
+                        filepath = '{}/data/{}/{}/{}'.format(parentdir, self.objectid, name, ftype)
+                        Path(filepath).mkdir(parents=True, exist_ok=True)
+                        datafileid = df['datafileid']
+                        filename = df['filename']
+                        download_file = '{}/{}'.format(filepath, filename)
 
-                    if not os.path.exists(download_file):
-                        if self.verbose:
-                            print('Downloading: {}'.format(download_file))
-                        im = Image(token=self.token)
-                        im.get(datafileid=datafileid, filepath=download_file)
+                        if not os.path.exists(download_file):
+                            if self.verbose:
+                                print('Downloading: {}'.format(download_file))
+                            im = Image(token=self.token)
+                            im.get(datafileid=datafileid, filepath=download_file)
+                            self.local_information['partial_download'] = True
 
-                    else:
-                        if self.verbose:
-                            print('File \'{}\' already exists'.format(download_file))
+                        else:
+                            if self.verbose:
+                                print('File \'{}\' already exists'.format(download_file))
+
+                self.local_information['downloaded'] = True
+                self.local_information['partial_download'] = False
+
+            #else:
+            #    if self.verbose:
+            #        print('Exposures have been take, but are not ready for download')
+
+            else:
+                if self.verbose:
+                    print('Exposures not taken yet.')
+        else:
+            if self.verbose:
+                print('Exposure is completed')
+
+
+    #def database_save(self):
+    #    if self.valid and self.id:
+    #        try:
+    #            database = mmt_database()
+    #        except:
+    #            print('There is no mongodb server running. Unable to locally save')
+    #            return
+
+    #        self.local_information['local_save'] = True
+
+    #        if '_id' in self.local_information.keys():
+                #ignite and rebuild
+    #            db_query = {"_id": self.id}
+    #            database.mmt_targets.delete_one(db_query)
+    #            insert = database.mmt_targets.insert_one(self.local_information)
+    #        else:
+    #            self.local_information['_id']=self.id
+    #            insert = database.mmt_targets.insert_one(self.local_information)
+    #        if self.verbose:
+    #            print('Successfully saved Target to local mongodb {}'.format(str(insert.inserted_id)))
+
+
+    #def database_load(self):
+    #    try:
+    #        database = mmt_database()
+    #    except:
+    #        if self.verbose:
+    #            print('There is no mongodb server running. Unable to locally load')
+    #        return
+
+    #    db_query = { '_id': self.targetid }
+    #    target = database.mmt_targets.find(db_query)
+    #    if target:
+    #        for t in target:
+    #            self.local_information = t
+    #            break
 
 
 class Instruments(api):
@@ -483,7 +564,7 @@ class Instruments(api):
         self. verbose = verbose
         super().__init__('trimester//schedule/all/', token)
 
-    def get_instruments(self, date=None, instrumentid=None):
+    def get_instruments(self, date=None, instrumentid=None, getAll=False):
         if date is None and instrumentid is None:
             date = datetime.now()
 
@@ -508,10 +589,13 @@ class Instruments(api):
             for qr in pq['queueruns']:
                 start = datetime.strptime(qr['startdate'], '%Y-%m-%d %H:%M:%S-%f')
                 end = datetime.strptime(qr['enddate'], '%Y-%m-%d %H:%M:%S-%f')
-                if instrumentid is None and (date > start and date < end):
+                if getAll:
                     ret.append({'instrumentid':instid, 'name':queuename, 'start': start, 'end': end})
-                if date is None and (instrumentid == int(instid)):
-                    ret.append({'instrumentid':instid, 'name':queuename, 'start': start, 'end': end})
+                else:
+                    if instrumentid is None and (date > start and date < end):
+                        ret.append({'instrumentid':instid, 'name':queuename, 'start': start, 'end': end})
+                    if date is None and (instrumentid == int(instid)):
+                        ret.append({'instrumentid':instid, 'name':queuename, 'start': start, 'end': end})
 
         ret = sorted(ret, key=lambda i: i['start'])
         if self.verbose:
@@ -592,3 +676,54 @@ class Image(api):
             self.request = None
         else:
             print('Image download request error')
+
+
+#class Listener():
+#    def __init__(self, token=None, payload={}):
+#        assert token is not None, 'token cannot be None'
+#        self.token = token
+#        self.targets = []
+#        self.listener_log = payload['logpath'] if 'logpath' in payload.keys() else os.getcwd()
+
+#        targetid = payload['targetid'] if 'targetid' in payload.keys() else None
+        #self._load_localtargets(targetid=targetid, token=self.token)
+
+
+    #def _load_localtargets(self, targetid=None, token=None):
+    #    database = mmt_database(table='mmt_targets')
+    #    db_targets = []
+    #    if targetid is not None:
+    #        target_query = {'_id':targetid}
+    #        db_targets = database.mmt_targets.find(target_query)
+        #elif token is not None:
+        #    target_query = {'token':token}
+        #    db_targets = database.mmt_targets.find(target_query)
+    #    else:
+    #        db_targets = database.mmt_targets.find()
+    #    for t in db_targets:
+    #        payload = {'targetid':t['_id']}
+    #        targ = Target(token=self.token, payload=payload)
+    #        targ.local_information = t
+    #        targ.dump()
+    #        self.targets.append(targ)
+
+
+#    def listen(self):
+
+#        Force=True
+        #make this more verbose
+#        start_time = datetime.now()
+#        all_downloaded = all([x.local_information['downloaded'] for x in self.targets])
+
+#        while (not all_downloaded or Force):
+#            for t in self.targets:
+#                t.get()
+#                print(t.objectid)
+#                t.database_load()
+#                t.download_exposures(force=Force)
+#                t.database_save()
+#            all_downloaded = all([x.local_information['downloaded'] for x in self.targets])
+#            print("Sleeping for 60s")
+#            time.sleep(60)
+
+#        pass

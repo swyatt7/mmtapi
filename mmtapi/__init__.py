@@ -7,6 +7,8 @@ MMT_JSON_KEYS = ("id", "ra", "objectid", "observationtype", "moon", "seeing", "p
                  "totallengthformatted", "exposuretimeremainingformatted", "exposuretimecompleted",
                  "percentcompleted", "offsetstars", "details", "mask")
 
+LOCAL_TARGET_KEYS = ("partial_download", "downloaded", "local_save", "_id", "delete_date")
+
 MMT_REQUIRED_KEYS = ['ra', 'dec', 'epoch', 'exposuretime', 'observationtype', 'numberexposures', 'observationtype']
 
 def isInt(i):
