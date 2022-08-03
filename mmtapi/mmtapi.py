@@ -451,6 +451,10 @@ class Target(api):
 
     def upload_finder(self, finder_path):
         if self.valid:
+            if isinstance(finder_path, str):
+                finder_file = open(finder_path, 'rb')
+            else:  # if it's already a file object (e.g., from Django)
+                finder_file = finder_path.open('rb')
             data = {
                 'urlparams': {
                     'targetid':self.__dict__['targetid']
@@ -461,7 +465,7 @@ class Target(api):
                     'target_id':str(self.__dict__['id']),
                 },
                 'files':{
-                    'finding_chart_file': open(finder_path, 'rb')
+                    'finding_chart_file': finder_file
                 },
                 'd_json':None
             }
