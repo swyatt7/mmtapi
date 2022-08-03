@@ -611,13 +611,13 @@ class Datalist(api):
         super().__init__('data/list/catalogtarget', token)
 
 
-    def get(self, targetid=None):
-        assert targetid is not None, 'targetid cannot be None'
+    def get(self, targetid, data_type='raw'):
+        assert data_type in ['raw', 'reduced'], 'data_type must either be raw or reduced'
         r_json = {
             'urlparams':{
                 'targetid':targetid,
                 'token':self.token,
-                'type':'raw'
+                'type':data_type
             }
         }
 
