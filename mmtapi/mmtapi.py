@@ -491,7 +491,7 @@ class Target(api):
                         ftype = df['type']
                         filepath = '{}/data/{}/{}/{}'.format(parentdir, self.objectid, name, ftype)
                         Path(filepath).mkdir(parents=True, exist_ok=True)
-                        datafileid = df['datafileid']
+                        datafileid = df['id']
                         filename = df['filename']
                         download_file = '{}/{}'.format(filepath, filename)
 
@@ -622,31 +622,9 @@ class Datalist(api):
         }
 
         self._get(r_json=r_json)
-        cwd = os.getcwd()
 
         if self.request.status_code == 200:
-            content = json.loads(self.request.content)
-
-            for c in content:
-                file_info = []
-
-                name = c['name']
-                con_datafiles = c['datafiles']
-
-                for cd in con_datafiles:
-                    file_info.append({
-                        'datafileid':cd['id'],
-                        'filename':cd['filename'],
-                        'type':cd['type']
-                    })
-
-                self.data.append(
-                    {
-                        'name':name,
-                        'datafiles':file_info
-                    }
-                )
-
+            self.data = self.request.json()
         else:
             print('Datalist request error')
 
