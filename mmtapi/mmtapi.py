@@ -26,7 +26,7 @@ class api():
         self.request = None
 
 
-    def __build_url(self, params={}):
+    def _build_url(self, params={}):
         assert self.target is not None, 'Target cannot be None'
         self.url = '{}/{}'.format(self.base, self.target)
         for p in params:
@@ -37,7 +37,7 @@ class api():
 
 
     def _post(self, r_json):
-        self.__build_url(r_json['urlparams'])
+        self._build_url(r_json['urlparams'])
         data = r_json['data'] if 'data' in r_json.keys() else None
         files = r_json['files'] if 'files' in r_json.keys() else None
         d_json = r_json['d_json'] if 'd_json' in r_json.keys() else None
@@ -46,21 +46,21 @@ class api():
 
 
     def _get(self, r_json):
-        self.__build_url(r_json['urlparams'])
+        self._build_url(r_json['urlparams'])
         d_json = r_json['d_json'] if 'd_json' in r_json.keys() else None
         self.request = requests.get(self.url, json=d_json)
         return self.request
 
 
     def _put(self, r_json):
-        self.__build_url(r_json['urlparams'])
+        self._build_url(r_json['urlparams'])
         d_json = r_json['d_json']
         self.request = requests.put(self.url, json=d_json)
         return self.request
 
 
     def _delete(self, r_json):
-        self.__build_url(r_json['urlparams'])
+        self._build_url(r_json['urlparams'])
         d_json = r_json['d_json']
         self.request = requests.delete(self.url, json=d_json)
         return self.request
