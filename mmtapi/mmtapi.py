@@ -70,15 +70,11 @@ class Target(api):
     def __init__(self, token=None, verbose=True, payload={}):
         self.verbose = verbose
         self.valid = False
+        self.downloaded = False
+        self.partial_download = False
         self.message = {
             'Errors':[],
             'Warnings':[]
-        }
-
-        self.local_information = {
-            'partial_download':False,
-            'downloaded':False,
-            'local_save':False
         }
 
         assert token is not None, 'Token cannot be None'
@@ -500,14 +496,15 @@ class Target(api):
                                 print('Downloading: {}'.format(download_file))
                             im = Image(token=self.token)
                             im.get(datafileid=datafileid, filepath=download_file)
-                            self.local_information['partial_download'] = True
+                            self.partial_download = True
 
                         else:
                             if self.verbose:
                                 print('File \'{}\' already exists'.format(download_file))
+                                self.partial_download = True
 
-                self.local_information['downloaded'] = True
-                self.local_information['partial_download'] = False
+                self.downloaded = True
+                self.partial_download = False
 
             #else:
             #    if self.verbose:
@@ -519,44 +516,6 @@ class Target(api):
         else:
             if self.verbose:
                 print('Exposure is completed')
-
-
-    #def database_save(self):
-    #    if self.valid and self.id:
-    #        try:
-    #            database = mmt_database()
-    #        except:
-    #            print('There is no mongodb server running. Unable to locally save')
-    #            return
-
-    #        self.local_information['local_save'] = True
-
-    #        if '_id' in self.local_information.keys():
-                #ignite and rebuild
-    #            db_query = {"_id": self.id}
-    #            database.mmt_targets.delete_one(db_query)
-    #            insert = database.mmt_targets.insert_one(self.local_information)
-    #        else:
-    #            self.local_information['_id']=self.id
-    #            insert = database.mmt_targets.insert_one(self.local_information)
-    #        if self.verbose:
-    #            print('Successfully saved Target to local mongodb {}'.format(str(insert.inserted_id)))
-
-
-    #def database_load(self):
-    #    try:
-    #        database = mmt_database()
-    #    except:
-    #        if self.verbose:
-    #            print('There is no mongodb server running. Unable to locally load')
-    #        return
-
-    #    db_query = { '_id': self.targetid }
-    #    target = database.mmt_targets.find(db_query)
-    #    if target:
-    #        for t in target:
-    #            self.local_information = t
-    #            break
 
 
 class Instruments(api):
@@ -678,52 +637,35 @@ class Image(api):
             print('Image download request error')
 
 
-#class Listener():
-#    def __init__(self, token=None, payload={}):
-#        assert token is not None, 'token cannot be None'
-#        self.token = token
-#        self.targets = []
-#        self.listener_log = payload['logpath'] if 'logpath' in payload.keys() else os.getcwd()
+class Listener():
+    def __init__(self, token=None, targetid=None):
+        assert token is not None, 'token cannot be None'
+        assert targetid is not None, 'targetid cannot be None'
+        self.token = token
+        self.targets = []
+        self.targets.append(Target(token=self.token, payload={'targetid':targetid})) 
+        #self.listener_log = payload['logpath'] if 'logpath' in payload.keys() else os.getcwd()
 
-#        targetid = payload['targetid'] if 'targetid' in payload.keys() else None
-        #self._load_localtargets(targetid=targetid, token=self.token)
+    def listen(self, Force=True):
 
+        start_time = datetime.now()
+        all_downloaded = all([x.downloaded for x in self.targets])
 
-    #def _load_localtargets(self, targetid=None, token=None):
-    #    database = mmt_database(table='mmt_targets')
-    #    db_targets = []
-    #    if targetid is not None:
-    #        target_query = {'_id':targetid}
-    #        db_targets = database.mmt_targets.find(target_query)
-        #elif token is not None:
-        #    target_query = {'token':token}
-        #    db_targets = database.mmt_targets.find(target_query)
-    #    else:
-    #        db_targets = database.mmt_targets.find()
-    #    for t in db_targets:
-    #        payload = {'targetid':t['_id']}
-    #        targ = Target(token=self.token, payload=payload)
-    #        targ.local_information = t
-    #        targ.dump()
-    #        self.targets.append(targ)
+        run_listener = not all_downloaded or Force
 
+        while run_listener:
 
-#    def listen(self):
+            for t in self.targets:
+                t.get()
+                print(t.objectid)
+                t.download_exposures(force=Force)
 
-#        Force=True
-        #make this more verbose
-#        start_time = datetime.now()
-#        all_downloaded = all([x.local_information['downloaded'] for x in self.targets])
+            run_listener = not all([x.downloaded for x in self.targets])
 
-#        while (not all_downloaded or Force):
-#            for t in self.targets:
-#                t.get()
-#                print(t.objectid)
-#                t.database_load()
-#                t.download_exposures(force=Force)
-#                t.database_save()
-#            all_downloaded = all([x.local_information['downloaded'] for x in self.targets])
-#            print("Sleeping for 60s")
-#            time.sleep(60)
+            if run_listener:
+                print("Sleeping for 60s")
+                time.sleep(60)
+            else:
+                print('Download finished :)')
 
-#        pass
+        pass
