@@ -26,7 +26,7 @@ class api():
         self.request = None
 
 
-    def __build_url(self, params={}):
+    def _build_url(self, params={}):
         assert self.target is not None, 'Target cannot be None'
         self.url = '{}/{}'.format(self.base, self.target)
         for p in params:
@@ -37,7 +37,7 @@ class api():
 
 
     def _post(self, r_json):
-        self.__build_url(r_json['urlparams'])
+        self._build_url(r_json['urlparams'])
         data = r_json['data'] if 'data' in r_json.keys() else None
         files = r_json['files'] if 'files' in r_json.keys() else None
         d_json = r_json['d_json'] if 'd_json' in r_json.keys() else None
@@ -46,21 +46,21 @@ class api():
 
 
     def _get(self, r_json):
-        self.__build_url(r_json['urlparams'])
+        self._build_url(r_json['urlparams'])
         d_json = r_json['d_json'] if 'd_json' in r_json.keys() else None
         self.request = requests.get(self.url, json=d_json)
         return self.request
 
 
     def _put(self, r_json):
-        self.__build_url(r_json['urlparams'])
+        self._build_url(r_json['urlparams'])
         d_json = r_json['d_json']
         self.request = requests.put(self.url, json=d_json)
         return self.request
 
 
     def _delete(self, r_json):
-        self.__build_url(r_json['urlparams'])
+        self._build_url(r_json['urlparams'])
         d_json = r_json['d_json']
         self.request = requests.delete(self.url, json=d_json)
         return self.request
@@ -447,6 +447,10 @@ class Target(api):
 
     def upload_finder(self, finder_path):
         if self.valid:
+            if isinstance(finder_path, str):
+                finder_file = open(finder_path, 'rb')
+            else:  # if it's already a file object (e.g., from Django)
+                finder_file = finder_path.open('rb')
             data = {
                 'urlparams': {
                     'targetid':self.__dict__['targetid']
@@ -457,7 +461,7 @@ class Target(api):
                     'target_id':str(self.__dict__['id']),
                 },
                 'files':{
-                    'finding_chart_file': open(finder_path, 'rb')
+                    'finding_chart_file': finder_file
                 },
                 'd_json':None
             }
@@ -487,7 +491,7 @@ class Target(api):
                         ftype = df['type']
                         filepath = '{}/data/{}/{}/{}'.format(parentdir, self.objectid, name, ftype)
                         Path(filepath).mkdir(parents=True, exist_ok=True)
-                        datafileid = df['datafileid']
+                        datafileid = df['id']
                         filename = df['filename']
                         download_file = '{}/{}'.format(filepath, filename)
 
@@ -570,42 +574,20 @@ class Datalist(api):
         super().__init__('data/list/catalogtarget', token)
 
 
-    def get(self, targetid=None):
-        assert targetid is not None, 'targetid cannot be None'
+    def get(self, targetid, data_type='raw'):
+        assert data_type in ['raw', 'reduced'], 'data_type must either be raw or reduced'
         r_json = {
             'urlparams':{
                 'targetid':targetid,
                 'token':self.token,
-                'type':'raw'
+                'type':data_type
             }
         }
 
         self._get(r_json=r_json)
-        cwd = os.getcwd()
 
         if self.request.status_code == 200:
-            content = json.loads(self.request.content)
-
-            for c in content:
-                file_info = []
-
-                name = c['name']
-                con_datafiles = c['datafiles']
-
-                for cd in con_datafiles:
-                    file_info.append({
-                        'datafileid':cd['id'],
-                        'filename':cd['filename'],
-                        'type':cd['type']
-                    })
-
-                self.data.append(
-                    {
-                        'name':name,
-                        'datafiles':file_info
-                    }
-                )
-
+            self.data = self.request.json()
         else:
             print('Datalist request error')
 
