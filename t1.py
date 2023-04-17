@@ -1,7 +1,7 @@
 import mmtapi.mmtapi as mmtapi
 
-demoTOKEN = '0f3732fcfb1c8577c390e71a176f3c8f'
-mmirsToken = 'fd54484e987d52bb549aba2fe84edfd7'
+demoTOKEN = ''
+mmirsToken = ''
 
 def test_post_binospec():
     payload = {'centralwavelength': 6500.0, 'dec': '-19:30:45.100', 'epoch': 2000.0, 'exposuretime': 450.0, 
@@ -20,7 +20,7 @@ def test_post_mmirs():
         'maskid': 111, 'notes': 'Engineering observations.', 'numberexposures': 10, 
         'slitwidth': '5pixel', 'targetofopportunity': 0, 'visits': 1,'instrumentid':15, 'gain':'low',
         'readtab': 'ramp_4.426', 'grism':'J', 'slitwidthproperty':'long', 'dithersize':'30' }
-    t = mmtapi.Target(token='58eeaefbed97f95a5f56a18b52cfe5dc', payload=payload)
+    t = mmtapi.Target(token='mmirsToken', payload=payload)
     t.dump()
     print(t.message)
     t.post()
