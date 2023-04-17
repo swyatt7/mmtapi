@@ -42,25 +42,40 @@ To create a target there are a lot of required fields and conditional parameters
 
 The target exposure information is based on the the field `observationtype`:
 
-For `observationtype:imaging`:
-* `filter`: Must be `g`, `r`, `i`, or `z`
-* `maskid`: can be `110` or a predefined mask set up prior to target request
-* `exposuretime`: The observation exposure time in seconds
+For Binospec observationtype:imaging:
 
-For `observationtype:longslit`:
-* `grating`: Valid options are `270`, `600`, and `1000`
-* `centralwavelength`: Depending on the chosen `grating`:
-  * For `grating=270`, valid options are between `5501-7838`
-  * For `grating=600`, valid options are between `5146-8783`
-  * For `grating=1000`, valid options are between `4108-4683`, `5181-7273`, `7363-7967`, `8153-8772` or `8897-9279`
-* `slitwidth`: valid options are `Longslit0_75`, `Longslit1`, `Longslit1_25`, `Longslit1_5`, `Longslit5`
-* `filter`: valid options are `LP3800` or `LP3500`. Defaults to `LP3800`
-* `maskid`: Can be a predefined mask, or there are common `maskid`s depending on the chosen slitwidth:
-  * For `Longslit0_75`: id `113`
-  * For `Longslit1`: id `111`
-  * For `Longslit1_25`: id `131`
-  * For `Longslit1_5`: id `114`
-  * For `Longslit5`: id `112`
+filter: Must be g, r, i, or z
+maskid: can be 110 or a predefined mask set up prior to target request
+exposuretime: The observation exposure time in seconds
+For MMIRS observationtype:imaging:
+
+filter: Must be J, H, K, or Ks
+dithersize: Must be 5, 7, 10, 15, 20, 30, 60, 120, or 210
+readtab: Must be ramp_4.426 or ramp_1.475`
+maskid: can be 110 or a predefined mask set up prior to target request
+exposuretime: The observation exposure time in seconds
+For Binospec observationtype:longslit:
+
+grating: Valid options are 270, 600, and 1000
+centralwavelength: Depending on the chosen grating:
+For grating=270, valid options are between 5501-7838
+For grating=600, valid options are between 5146-8783
+For grating=1000, valid options are between 4108-4683, 5181-7273, 7363-7967, 8153-8772 or 8897-9279
+slitwidth: valid options are Longslit0_75, Longslit1, Longslit1_25, Longslit1_5, Longslit5
+filter: valid options are LP3800 or LP3500. Defaults to LP3800
+maskid: Can be a predefined mask, or there are common maskids depending on the chosen slitwidth:
+For Longslit0_75: id 113
+For Longslit1: id 111
+For Longslit1_25: id 131
+For Longslit1_5: id 114
+For Longslit5: id 112
+For MMIRS observationtype:longslit:
+
+grism: Valid options are J, HK, and HK3
+readtab: Valid options are ramp_4.426
+slitwidth: valid options are '1pixel', '2pixel', '3pixel', '4pixel', '5pixel','6pixel','12pixel'
+slitwidthproperty: valid options are 'long', 'short'
+
 
 Other observation metadata:
 
@@ -77,7 +92,7 @@ All metadata will be validated upon initialization. Once the target object has b
 ```python
 import mmtapi.mmtapi as mmtapi
 
-#example for imaging target payload:
+#example for Binospec imaging target payload:
 
 payload = {
   'objectid':'TARGETNAME',
@@ -94,7 +109,7 @@ payload = {
 }
 
 
-#example payload for longslit target payload
+#example payload for Binospec longslit target payload
 
 payload = {
   'objectid':'Targetname',
@@ -112,6 +127,20 @@ payload = {
   'priority':1,
   'targetofopportunity':1
 }
+#example payload for MMIRS longslit target payload
+
+payload = {'dec': '-19:30:45.100', 'epoch': 'J2000', 'exposuretime': 450.0,
+        'filter': 'zJ', 'grating': '270','magnitude': 16.9, 'maskid': 111, 'notes': 'Demo observation request. Please do not observe this.',
+        'numberexposures': 3, 'objectid': 'AT2021fxy', 'observationtype': 'longslit','priority': 3, 'ra': '13:13:01.560',
+        'slitwidth': '1pixel', 'targetofopportunity': 0, 'visits': 1,'instrumentid':15, 'gain':'low',
+        'readtab': 'ramp_4.426', 'grism':'J', 'slitwidthproperty':'long', 'dithersize':'5' }
+
+#this will create the target along with validating the payload information. It will inform the user of any errors or warnings associated with the metadata
+target = mmtapi.Target(token=API_TOKEN, 
+                       verbose=True, 
+                       payload=payload)
+#this will send the information to the scheduler if it is a valid target
+target.post()
 
 #this will create the target along with validating the payload information. It will inform the user of any errors or warnings associated with the metadata
 target = mmtapi.Target(token=API_TOKEN, 
@@ -199,7 +228,7 @@ current_instruments = api.get_instruments()
 #you can look into the future to see what instruments will be available:
 future_instruments = api.get_instruments(date=datetime.datetime.now()+timedelta(months=1))
 
-#you can look through the entire published schedule to see when a certain instrument will be on the telescope (Binospec = 16)
+#you can look through the entire published schedule to see when a certain instrument will be on the telescope (Binospec = 16, MMIRS = 15)
 my_instrument = api.get_instruments(instrumentid=16)
 ```
 
